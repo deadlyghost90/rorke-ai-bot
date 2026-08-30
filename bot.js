@@ -26,7 +26,7 @@ class OpenRouterAI {
         {
           model: this.model,
           messages: [
-            { role: 'system', content: 'You are Rorke, a Minecraft bot. Answer briefly in 1-2 sentences.' },
+            { role: 'system', content: 'You are Rorke, a Minecraft bot. Answer briefly.' },
             { role: 'user', content: question }
           ],
           max_tokens: 80,
@@ -90,28 +90,33 @@ bot.on('message', (message) => {
   }
 });
 
-// BOT LIFE
+// BOT LIFE - Player-like movement + DeadlyGhost focus
 function startBotLife() {
   console.log('Rorke is ALIVE!');
   
+  // Player-like random movement with facing direction
   setInterval(() => {
-    const actions = ['forward', 'back', 'left', 'right', 'jump', 'sneak', 'sprint', 'spin'];
+    const actions = ['forward', 'back', 'strafe_left', 'strafe_right', 'jump', 'sneak', 'sprint', 'look_around'];
     const action = actions[Math.floor(Math.random() * actions.length)];
     
     switch(action) {
       case 'forward':
+        bot.look(bot.entity.yaw, 0);
         bot.setControlState('forward', true);
         setTimeout(() => bot.setControlState('forward', false), 3000);
         break;
       case 'back':
+        bot.look(bot.entity.yaw + Math.PI, 0);
         bot.setControlState('back', true);
         setTimeout(() => bot.setControlState('back', false), 2000);
         break;
-      case 'left':
+      case 'strafe_left':
+        bot.look(bot.entity.yaw - Math.PI/2, 0);
         bot.setControlState('left', true);
         setTimeout(() => bot.setControlState('left', false), 2000);
         break;
-      case 'right':
+      case 'strafe_right':
+        bot.look(bot.entity.yaw + Math.PI/2, 0);
         bot.setControlState('right', true);
         setTimeout(() => bot.setControlState('right', false), 2000);
         break;
@@ -131,24 +136,26 @@ function startBotLife() {
           bot.setControlState('forward', false);
         }, 3000);
         break;
-      case 'spin':
-        bot.look(bot.entity.yaw + Math.PI, bot.entity.pitch);
+      case 'look_around':
+        bot.look(bot.entity.yaw + Math.random() * Math.PI * 2, (Math.random() - 0.5) * Math.PI / 2);
         break;
     }
-  }, 4000);
+  }, 3000);
   
-  // Look at players
+  // Look at DeadlyGhost
   setInterval(() => {
-    const players = Object.values(bot.players).map(p => p.entity).filter(e => e && e !== bot.entity);
-    if (players.length > 0) {
-      const nearest = players.sort((a, b) => 
-        bot.entity.position.distanceTo(a.position) - bot.entity.position.distanceTo(b.position)
-      )[0];
-      if (bot.entity.position.distanceTo(nearest.position) < 20) {
+    const deadlyGhost = bot.players['DeadlyGhost']?.entity;
+    if (deadlyGhost && deadlyGhost !== bot.entity) {
+      bot.lookAt(deadlyGhost.position.offset(0, 1.6, 0));
+    } else {
+      // Look at nearest player
+      const players = Object.values(bot.players).map(p => p.entity).filter(e => e && e !== bot.entity);
+      if (players.length > 0) {
+        const nearest = players[0];
         bot.lookAt(nearest.position.offset(0, 1.6, 0));
       }
     }
-  }, 2000);
+  }, 1000);
 }
 
 // AUTO PICKUP
@@ -158,14 +165,90 @@ bot.on('entitySpawn', (entity) => {
   }
 });
 
-// CHAT COMMANDS
+// PLAYER CHAT - DeadlyGhost commands + AI
 bot.on('chat', async (username, message) => {
   if (username === bot.username) return;
   
   const msg = message.toLowerCase();
   
+  // DEADLYGHOST SPECIAL COMMANDS (Owner control)
+  if (username === 'DeadlyGhost') {
+    const ghost = bot.players['DeadlyGhost']?.entity;
+    
+    if (msg === 'aao' || msg === 'come' || msg === 'idhar aao') {
+      if (ghost) {
+        bot.lookAt(ghost.position.offset(0, 1.6, 0));
+        bot.setControlState('sprint', true);
+        bot.setControlState('forward', true);
+        setTimeout(() => {
+          bot.setControlState('sprint', false);
+          bot.setControlState('forward', false);
+        }, 5000);
+        bot.chat('Aa raha hoon!');
+      }
+      return;
+    }
+    
+    if (msg === 'ruk' || msg === 'stop' || msg === 'ruk jao') {
+      bot.clearControlStates();
+      bot.chat('Ruk gaya!');
+      return;
+    }
+    
+    if (msg === 'follow' || msg === 'peeche aao') {
+      if (ghost) {
+        const followInterval = setInterval(() => {
+          if (!bot.players['DeadlyGhost']) {
+            clearInterval(followInterval);
+            return;
+          }
+          const g = bot.players['DeadlyGhost'].entity;
+          if (bot.entity.position.distanceTo(g.position) > 3) {
+            bot.lookAt(g.position.offset(0, 1.6, 0));
+            bot.setControlState('forward', true);
+          } else {
+            bot.setControlState('forward', false);
+          }
+        }, 500);
+        bot.chat('Follow kar raha hoon!');
+      }
+      return;
+    }
+    
+    if (msg === 'jump' || msg === 'kudo') {
+      bot.setControlState('jump', true);
+      setTimeout(() => bot.setControlState('jump', false), 500);
+      bot.chat('Jump kiya!');
+      return;
+    }
+    
+    if (msg === 'sneak' || msg === 'jhuko') {
+      bot.setControlState('sneak', true);
+      bot.chat('Jhuk gaya!');
+      return;
+    }
+    
+    if (msg === 'stand' || msg === 'khare ho jao') {
+      bot.setControlState('sneak', false);
+      bot.chat('Khara ho gaya!');
+      return;
+    }
+    
+    if (msg === 'run' || msg === 'bhaag') {
+      bot.setControlState('sprint', true);
+      bot.setControlState('forward', true);
+      setTimeout(() => {
+        bot.setControlState('sprint', false);
+        bot.setControlState('forward', false);
+      }, 5000);
+      bot.chat('Bhaag raha hoon!');
+      return;
+    }
+  }
+  
+  // GENERAL COMMANDS
   if (msg === '!help') {
-    bot.chat('Commands: !ping, !ai, !come, !follow, !stop, !sneak, !stand, !run, !jump');
+    bot.chat('Commands: !ping, !ai question, come, follow, stop, jump, sneak, stand, run');
     return;
   }
   
@@ -174,84 +257,12 @@ bot.on('chat', async (username, message) => {
     return;
   }
   
-  if (msg.startsWith('!ai ')) {
-    const question = message.replace('!ai ', '');
-    const answer = await ai.ask(question);
-    bot.chat(answer);
-    return;
-  }
-  
-  if (msg === '!come') {
-    const player = bot.players[username]?.entity;
-    if (player) {
-      bot.lookAt(player.position.offset(0, 1.6, 0));
-      bot.setControlState('sprint', true);
-      bot.setControlState('forward', true);
-      setTimeout(() => {
-        bot.setControlState('sprint', false);
-        bot.setControlState('forward', false);
-      }, 5000);
-      bot.chat('Coming!');
-    }
-    return;
-  }
-  
-  if (msg === '!follow') {
-    const player = bot.players[username]?.entity;
-    if (player) {
-      const followInterval = setInterval(() => {
-        if (bot.entity.position.distanceTo(player.position) > 3) {
-          bot.lookAt(player.position.offset(0, 1.6, 0));
-          bot.setControlState('forward', true);
-        } else {
-          bot.setControlState('forward', false);
-        }
-      }, 500);
-      bot.chat('Following!');
-    }
-    return;
-  }
-  
-  if (msg === '!stop') {
-    bot.clearControlStates();
-    bot.chat('Stopped!');
-    return;
-  }
-  
-  if (msg === '!sneak') {
-    bot.setControlState('sneak', true);
-    bot.chat('Sneaking!');
-    return;
-  }
-  
-  if (msg === '!stand') {
-    bot.setControlState('sneak', false);
-    bot.chat('Standing!');
-    return;
-  }
-  
-  if (msg === '!run') {
-    bot.setControlState('sprint', true);
-    bot.setControlState('forward', true);
-    setTimeout(() => {
-      bot.setControlState('sprint', false);
-      bot.setControlState('forward', false);
-    }, 5000);
-    bot.chat('Running!');
-    return;
-  }
-  
-  if (msg === '!jump') {
-    bot.setControlState('jump', true);
-    setTimeout(() => bot.setControlState('jump', false), 500);
-    bot.chat('Jumping!');
-    return;
-  }
-  
-  if (msg.includes('rorke')) {
-    const question = message.replace(/rorke/gi, '').trim();
+  // AI CHAT
+  if (msg.startsWith('!ai ') || msg.includes('rorke') || msg.includes('hello rorke')) {
+    const question = msg.replace(/!ai |rorke|hello/gi, '').trim();
     const answer = await ai.ask(question || 'Hello');
     bot.chat(answer);
+    return;
   }
 });
 
