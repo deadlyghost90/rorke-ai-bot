@@ -51,7 +51,7 @@ class AIModelSwitcher {
     const HF_TOKEN = process.env.HF_TOKEN;
     
     if (!HF_TOKEN) {
-      return '❌ HF_TOKEN not set in environment variables!';
+      return '❌ HF_TOKEN not set!';
     }
     
     const prompt = `You are Rorke, a friendly Minecraft bot on CloudSMP server. Answer briefly and helpfully.\n\nPlayer: ${question}\nRorke:`;
@@ -77,15 +77,13 @@ class AIModelSwitcher {
       );
       
       const data = response.data;
-      
       if (Array.isArray(data)) {
         return data[0]?.generated_text?.trim() || 'No response';
       }
-      
       return data.generated_text?.trim() || 'No response';
     } catch (error) {
       console.error('AI Error:', error.message);
-      return '❌ AI service error! Try again later.';
+      return '❌ AI service error!';
     }
   }
 }
@@ -100,16 +98,37 @@ const bot = mineflayer.createBot({
   version: '1.20.4'
 });
 
+// AUTO LOGIN - Console mein command bhejo
 bot.on('login', () => {
-  console.log('Rorke joined the server!');
-  bot.chat('§8[§bRORKE§8] §fOnline! Type §b!help §ffor commands!');
+  console.log('Rorke joined! Attempting auto-login...');
+  
+  // 2 second wait karke login command bhejo
+  setTimeout(() => {
+    bot.chat('/login rorke4321a@');
+    console.log('Login command sent!');
+  }, 2000);
+});
+
+// Login successful check
+bot.on('message', (message) => {
+  const msg = message.toString();
+  
+  // Agar login successful message aaye
+  if (msg.includes('successfully logged in') || msg.includes('Login successful')) {
+    console.log('✅ Login successful!');
+    bot.chat('§8[§bRORKE§8] §fOnline! Type §b!help §ffor commands!');
+  }
+  
+  // Agar login required message aaye
+  if (msg.includes('/login') || msg.includes('login required')) {
+    bot.chat('/login rorke4321a@');
+    console.log('⚠️ Login required - sending password...');
+  }
 });
 
 bot.on('chat', async (username, message) => {
-  // Skip bot's own messages
   if (username === bot.username) return;
   
-  // Commands
   if (message === '!help') {
     bot.chat('§8[§bRORKE§8] §fCommands: §b!ping §f| §b!info §f| §b!model §f| §b!models §f| §b!ai <question>');
     return;
@@ -140,7 +159,6 @@ bot.on('chat', async (username, message) => {
   if (message.startsWith('!ai ')) {
     const question = message.replace('!ai ', '');
     bot.chat('§8[§bRORKE§8] §fThinking...');
-    
     try {
       const answer = await ai.ask(question);
       bot.chat(`§8[§bRORKE§8] §f${answer}`);
@@ -150,11 +168,9 @@ bot.on('chat', async (username, message) => {
     return;
   }
   
-  // Auto AI response when name mentioned
   if (message.includes('Rorke') || message.includes('rorke') || message.includes('RORKE')) {
     const question = message.replace(/Rorke|rorke|RORKE/gi, '').trim();
     bot.chat('§8[§bRORKE§8] §fThinking...');
-    
     try {
       const answer = await ai.ask(question || 'Hello!');
       bot.chat(`§8[§bRORKE§8] §f${answer}`);
