@@ -7,16 +7,18 @@ const app = express();
 app.get('/', (req, res) => res.send('Rorke Bot Online!'));
 app.listen(3000);
 
-// GEMINI AI
+// GEMINI API - NAYA FORMAT KEY
+const GEMINI_API_KEY = 'AQ.Ab8RN6Ks36d53xLFNMzUcre1_JauWeh43jFcWUId6yrehz7KRg';
+
 class GeminiAI {
   constructor() {
-    this.apiKey = process.env.GEMINI_API_KEY;
+    this.apiKey = GEMINI_API_KEY;
     this.model = 'gemini-1.5-flash';
     this.baseUrl = 'https://generativelanguage.googleapis.com/v1beta';
   }
   
   async ask(question) {
-    if (!this.apiKey) return 'GEMINI_API_KEY not set';
+    if (!this.apiKey) return 'No API key';
     
     const prompt = `You are Rorke, a Minecraft bot on CloudSMP server. Answer briefly in 1-2 sentences.\n\nPlayer: ${question}\nRorke:`;
     
@@ -29,11 +31,11 @@ class GeminiAI {
         }
       );
       
-      const answer = response.data.candidates[0]?.content?.parts[0]?.text || 'No response';
+      const answer = response.data.candidates?.[0]?.content?.parts?.[0]?.text || 'No response';
       return answer.replace(/[^a-zA-Z0-9\s.,!?']/g, '').trim();
     } catch (error) {
-      console.error('Gemini Error:', error.response?.data || error.message);
-      return 'AI error, try later';
+      console.error('Error:', error.response?.data?.error?.message || error.message);
+      return 'AI error: ' + (error.response?.data?.error?.message || 'unknown').substring(0, 50);
     }
   }
 }
@@ -47,7 +49,6 @@ const bot = mineflayer.createBot({
   version: '1.20.4'
 });
 
-// REGISTER + LOGIN
 bot.on('login', () => {
   console.log('Rorke joined!');
   setTimeout(() => bot.chat('/register rorke4321 rorke4321'), 2000);
@@ -82,7 +83,6 @@ bot.on('message', (message) => {
   }
 });
 
-// NPC MOVEMENT
 function startNPCMovement() {
   console.log('NPC movement started!');
   
@@ -119,7 +119,6 @@ function startNPCMovement() {
   }, 5000);
 }
 
-// CHAT COMMANDS
 bot.on('chat', async (username, message) => {
   if (username === bot.username) return;
   
@@ -198,7 +197,6 @@ bot.on('chat', async (username, message) => {
   }
 });
 
-// AUTO ITEM PICKUP
 bot.on('entitySpawn', (entity) => {
   if (entity.kind === 'Drops') {
     bot.collectBlock.collect(entity, (err) => {
