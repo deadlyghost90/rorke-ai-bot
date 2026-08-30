@@ -130,7 +130,7 @@ bot.on('message', (message) => {
   // Login successful
   if (msg.includes('successfully logged in') || msg.includes('login successful') || msg.includes('logged in')) {
     console.log('✅ Login successful!');
-    bot.chat('§8[§bRORKE§8] §fOnline! Type §b!help §ffor commands!');
+    bot.chat('&8[&bRORKE&8] &fOnline! Type &b!help &ffor commands!');
   }
   
   // Register required
@@ -162,62 +162,62 @@ bot.on('chat', async (username, message) => {
   if (username === bot.username) return;
   
   if (message === '!help') {
-    bot.chat('§8[§bRORKE§8] §fCommands: §b!ping §f| §b!info §f| §b!model §f| §b!models §f| §b!ai <question>');
+    bot.chat('&8[&bRORKE&8] &fCommands: &b!ping &f| &b!info &f| &b!model &f| &b!models &f| &b!ai <question>');
     return;
   }
   
   if (message === '!ping') {
-    bot.chat(`§8[§bRORKE§8] §fPong! Latency: §b${bot.player.ping}ms`);
+    bot.chat(`&8[&bRORKE&8] &fPong! Latency: &b${bot.player.ping}ms`);
     return;
   }
   
   if (message === '!info') {
-    bot.chat(`§8[§bRORKE§8] §fModel: §b${ai.getModelName()} §f| Server: §bCloudSMP`);
+    bot.chat(`&8[&bRORKE&8] &fModel: &b${ai.getModelName()} &f| Server: &bCloudSMP`);
     return;
   }
   
   if (message === '!models') {
-    bot.chat(`§8[§bRORKE§8] §fAvailable: §b${ai.listModels()}`);
+    bot.chat(`&8[&bRORKE&8] &fAvailable: &b${ai.listModels()}`);
     return;
   }
   
   if (message.startsWith('!model ')) {
     const modelName = message.replace('!model ', '').toLowerCase();
     const result = ai.switchModel(modelName);
-    bot.chat(`§8[§bRORKE§8] §f${result}`);
+    bot.chat(`&8[&bRORKE&8] &f${result}`);
     return;
   }
   
   if (message.startsWith('!ai ')) {
     const question = message.replace('!ai ', '');
-    bot.chat('§8[§bRORKE§8] §fThinking...');
+    bot.chat('&8[&bRORKE&8] &fThinking...');
     try {
       const answer = await ai.ask(question);
-      bot.chat(`§8[§bRORKE§8] §f${answer}`);
+      bot.chat(`&8[&bRORKE&8] &f${answer}`);
     } catch (error) {
-      bot.chat('§8[§bRORKE§8] §f❌ AI error!');
+      bot.chat('&8[&bRORKE&8] &f❌ AI error!');
     }
     return;
   }
   
   if (message.includes('Rorke') || message.includes('rorke') || message.includes('RORKE')) {
     const question = message.replace(/Rorke|rorke|RORKE/gi, '').trim();
-    bot.chat('§8[§bRORKE§8] §fThinking...');
+    bot.chat('&8[&bRORKE&8] &fThinking...');
     try {
       const answer = await ai.ask(question || 'Hello!');
-      bot.chat(`§8[§bRORKE§8] §f${answer}`);
+      bot.chat(`&8[&bRORKE&8] &f${answer}`);
     } catch (error) {
-      bot.chat('§8[§bRORKE§8] §f❌ AI error!');
+      bot.chat('&8[&bRORKE&8] &f❌ AI error!');
     }
   }
 });
 
 bot.on('playerJoin', (player) => {
-  bot.chat(`§8[§bRORKE§8] §fWelcome §b${player.username} §fto CloudSMP!`);
+  bot.chat(`&8[&bRORKE&8] &fWelcome &b${player.username} &fto CloudSMP!`);
 });
 
 bot.on('playerLeave', (player) => {
-  bot.chat(`§8[§bRORKE§8] §fGoodbye §b${player.username}§f!`);
+  bot.chat(`&8[&bRORKE&8] &fGoodbye &b${player.username}&f!`);
 });
 
 bot.on('kicked', (reason) => {
