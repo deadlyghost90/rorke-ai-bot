@@ -13,7 +13,7 @@ const GEMINI_API_KEY = 'AQ.Ab8RN6Ks36d53xLFNMzUcre1_JauWeh43jFcWUId6yrehz7KRg';
 class GeminiAI {
   constructor() {
     this.apiKey = GEMINI_API_KEY;
-    this.model = 'gemini-1.5-flash';
+    this.model = 'gemini-2.0-flash';
     this.baseUrl = 'https://generativelanguage.googleapis.com/v1beta';
   }
   
