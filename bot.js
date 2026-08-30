@@ -3,70 +3,43 @@ const express = require('express');
 const axios = require('axios');
 require('dotenv').config();
 
-// Keep alive server
 const app = express();
 app.get('/', (req, res) => res.send('Rorke Bot Online!'));
 app.listen(3000);
 
-// AI Model Switcher
-class AIModelSwitcher {
+// GEMINI AI
+class GeminiAI {
   constructor() {
-    this.currentModel = process.env.DEFAULT_MODEL || 'mistralai/Mistral-7B-Instruct-v0.2';
-    this.models = {
-      mistral: 'mistralai/Mistral-7B-Instruct-v0.2',
-      llama: 'meta-llama/Llama-2-7b-chat-hf',
-      gemma: 'google/gemma-2b-it',
-      phi: 'microsoft/phi-2',
-      zephyr: 'HuggingFaceH4/zephyr-7b-beta',
-      falcon: 'tiiuae/falcon-7b-instruct',
-      tinyllama: 'TinyLlama/TinyLlama-1.1B-Chat-v1.0',
-      qwen: 'Qwen/Qwen2.5-7B-Instruct'
-    };
-  }
-  
-  getModelName() {
-    for (const [name, id] of Object.entries(this.models)) {
-      if (id === this.currentModel) return name;
-    }
-    return 'custom';
-  }
-  
-  switchModel(modelName) {
-    if (this.models[modelName]) {
-      this.currentModel = this.models[modelName];
-      return `Switched to ${modelName}`;
-    }
-    return `Unknown model. Available: ${Object.keys(this.models).join(', ')}`;
-  }
-  
-  listModels() {
-    return Object.keys(this.models).join(', ');
+    this.apiKey = process.env.GEMINI_API_KEY;
+    this.model = 'gemini-1.5-flash';
+    this.baseUrl = 'https://generativelanguage.googleapis.com/v1beta';
   }
   
   async ask(question) {
-    const HF_TOKEN = process.env.HF_TOKEN;
-    if (!HF_TOKEN) return 'HF_TOKEN not set';
+    if (!this.apiKey) return 'GEMINI_API_KEY not set';
     
-    const prompt = `You are Rorke, a Minecraft bot on CloudSMP. Answer briefly.\n\nPlayer: ${question}\nRorke:`;
+    const prompt = `You are Rorke, a Minecraft bot on CloudSMP server. Answer briefly in 1-2 sentences.\n\nPlayer: ${question}\nRorke:`;
     
     try {
       const response = await axios.post(
-        `https://api-inference.huggingface.co/models/${this.currentModel}`,
-        { inputs: prompt, parameters: { max_new_tokens: 80, temperature: 0.7, return_full_text: false } },
-        { headers: { 'Authorization': `Bearer ${HF_TOKEN}` } }
+        `${this.baseUrl}/models/${this.model}:generateContent?key=${this.apiKey}`,
+        {
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { maxOutputTokens: 80, temperature: 0.7 }
+        }
       );
-      const data = response.data;
-      if (Array.isArray(data)) return data[0]?.generated_text?.trim() || 'No response';
-      return data.generated_text?.trim() || 'No response';
+      
+      const answer = response.data.candidates[0]?.content?.parts[0]?.text || 'No response';
+      return answer.replace(/[^a-zA-Z0-9\s.,!?']/g, '').trim();
     } catch (error) {
+      console.error('Gemini Error:', error.response?.data || error.message);
       return 'AI error, try later';
     }
   }
 }
 
-const ai = new AIModelSwitcher();
+const ai = new GeminiAI();
 
-// Bot setup
 const bot = mineflayer.createBot({
   host: process.env.SERVER_IP || 'YOUR_SERVER_IP',
   port: parseInt(process.env.SERVER_PORT) || 21148,
@@ -74,7 +47,7 @@ const bot = mineflayer.createBot({
   version: '1.20.4'
 });
 
-// AUTO REGISTER + LOGIN
+// REGISTER + LOGIN
 bot.on('login', () => {
   console.log('Rorke joined!');
   setTimeout(() => bot.chat('/register rorke4321 rorke4321'), 2000);
@@ -109,14 +82,11 @@ bot.on('message', (message) => {
   }
 });
 
-// NPC MOVEMENT SYSTEM
+// NPC MOVEMENT
 function startNPCMovement() {
-  let moving = true;
+  console.log('NPC movement started!');
   
-  // Random movement loop
   setInterval(() => {
-    if (!moving) return;
-    
     const actions = ['forward', 'back', 'left', 'right', 'jump', 'sneak'];
     const action = actions[Math.floor(Math.random() * actions.length)];
     
@@ -149,36 +119,20 @@ function startNPCMovement() {
   }, 5000);
 }
 
-// COMMANDS (Chat based)
+// CHAT COMMANDS
 bot.on('chat', async (username, message) => {
   if (username === bot.username) return;
   
-  // HELP
   if (message === '!help') {
-    bot.chat('Commands: !ping, !model, !models, !ai <question>, !come, !follow, !stop, !sneak, !stand, !run');
+    bot.chat('Commands: !ping, !ai question, !come, !follow, !stop, !sneak, !stand, !run');
     return;
   }
   
-  // PING
   if (message === '!ping') {
-    bot.chat(`Pong! ${bot.player.ping}ms`);
+    bot.chat(`Pong ${bot.player.ping}ms`);
     return;
   }
   
-  // MODELS
-  if (message === '!models') {
-    bot.chat(`Models: ${ai.listModels()}`);
-    return;
-  }
-  
-  // SWITCH MODEL
-  if (message.startsWith('!model ')) {
-    const modelName = message.replace('!model ', '').toLowerCase();
-    bot.chat(ai.switchModel(modelName));
-    return;
-  }
-  
-  // AI CHAT
   if (message.startsWith('!ai ')) {
     const question = message.replace('!ai ', '');
     bot.chat('Thinking...');
@@ -187,52 +141,45 @@ bot.on('chat', async (username, message) => {
     return;
   }
   
-  // COME TO PLAYER
   if (message === '!come') {
     const player = bot.players[username]?.entity;
     if (player) {
-      bot.pathfinder.setGoal(null);
       bot.lookAt(player.position);
       bot.setControlState('forward', true);
       setTimeout(() => bot.setControlState('forward', false), 3000);
-      bot.chat('Coming to you!');
+      bot.chat('Coming');
     }
     return;
   }
   
-  // FOLLOW PLAYER
   if (message === '!follow') {
     const player = bot.players[username]?.entity;
     if (player) {
       bot.pathfinder.setGoal(new mineflayer.goals.GoalFollow(player, 2), true);
-      bot.chat('Following you!');
+      bot.chat('Following');
     }
     return;
   }
   
-  // STOP MOVEMENT
   if (message === '!stop') {
     bot.pathfinder.setGoal(null);
     bot.clearControlStates();
-    bot.chat('Stopped!');
+    bot.chat('Stopped');
     return;
   }
   
-  // SNEAK
   if (message === '!sneak') {
     bot.setControlState('sneak', true);
-    bot.chat('Sneaking!');
+    bot.chat('Sneaking');
     return;
   }
   
-  // STAND
   if (message === '!stand') {
     bot.setControlState('sneak', false);
-    bot.chat('Standing!');
+    bot.chat('Standing');
     return;
   }
   
-  // RUN
   if (message === '!run') {
     bot.setControlState('sprint', true);
     bot.setControlState('forward', true);
@@ -240,43 +187,24 @@ bot.on('chat', async (username, message) => {
       bot.setControlState('sprint', false);
       bot.setControlState('forward', false);
     }, 3000);
-    bot.chat('Running!');
+    bot.chat('Running');
     return;
   }
   
-  // GIVE ITEM TO BOT
-  if (message.startsWith('!give ')) {
-    bot.chat('Give me item by dropping near me!');
-    return;
-  }
-  
-  // AUTO AI RESPONSE (when name called)
-  if (message.includes('Rorke') || message.includes('rorke') || message.includes('RORKE')) {
-    const question = message.replace(/Rorke|rorke|RORKE/gi, '').trim();
+  if (message.toLowerCase().includes('rorke')) {
+    const question = message.replace(/rorke/gi, '').trim();
     const answer = await ai.ask(question || 'Hello');
     bot.chat(answer);
-    return;
   }
 });
 
-// ITEM PICKUP (Auto collect nearby items)
+// AUTO ITEM PICKUP
 bot.on('entitySpawn', (entity) => {
   if (entity.kind === 'Drops') {
-    const item = entity.metadata[entity.metadata.length - 1];
     bot.collectBlock.collect(entity, (err) => {
-      if (err) console.log('Collect error:', err);
+      if (err) console.log('Collect error');
     });
   }
-});
-
-// PLAYER JOIN (Simple)
-bot.on('playerJoin', (player) => {
-  console.log(`${player.username} joined`);
-});
-
-// PLAYER LEAVE (Simple)
-bot.on('playerLeave', (player) => {
-  console.log(`${player.username} left`);
 });
 
 bot.on('kicked', (reason) => console.log('Kicked:', reason));
