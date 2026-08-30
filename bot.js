@@ -24,10 +24,6 @@ class AIModelSwitcher {
     };
   }
   
-  getCurrentModel() {
-    return this.currentModel;
-  }
-  
   getModelName() {
     for (const [name, id] of Object.entries(this.models)) {
       if (id === this.currentModel) return name;
@@ -38,9 +34,9 @@ class AIModelSwitcher {
   switchModel(modelName) {
     if (this.models[modelName]) {
       this.currentModel = this.models[modelName];
-      return `✅ Switched to ${modelName}!`;
+      return `Switched to ${modelName}`;
     }
-    return `❌ Unknown model! Available: ${Object.keys(this.models).join(', ')}`;
+    return `Unknown model. Available: ${Object.keys(this.models).join(', ')}`;
   }
   
   listModels() {
@@ -49,41 +45,21 @@ class AIModelSwitcher {
   
   async ask(question) {
     const HF_TOKEN = process.env.HF_TOKEN;
+    if (!HF_TOKEN) return 'HF_TOKEN not set';
     
-    if (!HF_TOKEN) {
-      return '❌ HF_TOKEN not set!';
-    }
-    
-    const prompt = `You are Rorke, a friendly Minecraft bot on CloudSMP server. Answer briefly and helpfully.\n\nPlayer: ${question}\nRorke:`;
+    const prompt = `You are Rorke, a Minecraft bot on CloudSMP. Answer briefly.\n\nPlayer: ${question}\nRorke:`;
     
     try {
       const response = await axios.post(
         `https://api-inference.huggingface.co/models/${this.currentModel}`,
-        {
-          inputs: prompt,
-          parameters: {
-            max_new_tokens: 100,
-            temperature: 0.7,
-            top_p: 0.9,
-            return_full_text: false
-          }
-        },
-        {
-          headers: {
-            'Authorization': `Bearer ${HF_TOKEN}`,
-            'Content-Type': 'application/json'
-          }
-        }
+        { inputs: prompt, parameters: { max_new_tokens: 80, temperature: 0.7, return_full_text: false } },
+        { headers: { 'Authorization': `Bearer ${HF_TOKEN}` } }
       );
-      
       const data = response.data;
-      if (Array.isArray(data)) {
-        return data[0]?.generated_text?.trim() || 'No response';
-      }
+      if (Array.isArray(data)) return data[0]?.generated_text?.trim() || 'No response';
       return data.generated_text?.trim() || 'No response';
     } catch (error) {
-      console.error('AI Error:', error.message);
-      return '❌ AI service error!';
+      return 'AI error, try later';
     }
   }
 }
@@ -100,135 +76,209 @@ const bot = mineflayer.createBot({
 
 // AUTO REGISTER + LOGIN
 bot.on('login', () => {
-  console.log('Rorke joined! Starting authentication...');
-  
-  setTimeout(() => {
-    console.log('Trying to register...');
-    bot.chat('/register rorke4321 rorke4321');
-  }, 2000);
+  console.log('Rorke joined!');
+  setTimeout(() => bot.chat('/register rorke4321 rorke4321'), 2000);
 });
 
 bot.on('message', (message) => {
   const msg = message.toString().toLowerCase();
   
-  // Register successful
-  if (msg.includes('registered') || msg.includes('successfully registered') || msg.includes('registration successful')) {
-    console.log('✅ Registered! Now logging in...');
-    setTimeout(() => {
-      bot.chat('/login rorke4321');
-    }, 2000);
+  if (msg.includes('registered') || msg.includes('successfully registered')) {
+    setTimeout(() => bot.chat('/login rorke4321'), 2000);
   }
   
-  // Already registered
   if (msg.includes('already registered')) {
-    console.log('⚠️ Already registered! Logging in...');
-    setTimeout(() => {
-      bot.chat('/login rorke4321');
-    }, 2000);
+    setTimeout(() => bot.chat('/login rorke4321'), 2000);
   }
   
-  // Login successful
-  if (msg.includes('successfully logged in') || msg.includes('login successful') || msg.includes('logged in')) {
-    console.log('✅ Login successful!');
-    bot.chat('&8[&bRORKE&8] &fOnline! Type &b!help &ffor commands!');
+  if (msg.includes('successfully logged in') || msg.includes('login successful')) {
+    console.log('Login successful!');
+    startNPCMovement();
   }
   
-  // Register required
-  if (msg.includes('register required') || msg.includes('please register') || msg.includes('/register')) {
-    console.log('⚠️ Register required...');
-    setTimeout(() => {
-      bot.chat('/register rorke4321 rorke4321');
-    }, 2000);
+  if (msg.includes('register required') || msg.includes('please register')) {
+    setTimeout(() => bot.chat('/register rorke4321 rorke4321'), 2000);
   }
   
-  // Login required
-  if (msg.includes('login required') || msg.includes('please login') || msg.includes('/login')) {
-    console.log('⚠️ Login required...');
-    setTimeout(() => {
-      bot.chat('/login rorke4321');
-    }, 2000);
+  if (msg.includes('login required') || msg.includes('please login')) {
+    setTimeout(() => bot.chat('/login rorke4321'), 2000);
   }
   
-  // Wrong password
-  if (msg.includes('wrong password') || msg.includes('incorrect password')) {
-    console.log('❌ Wrong password! Trying again...');
-    setTimeout(() => {
-      bot.chat('/login rorke4321');
-    }, 3000);
+  if (msg.includes('wrong password')) {
+    setTimeout(() => bot.chat('/login rorke4321'), 3000);
   }
 });
 
+// NPC MOVEMENT SYSTEM
+function startNPCMovement() {
+  let moving = true;
+  
+  // Random movement loop
+  setInterval(() => {
+    if (!moving) return;
+    
+    const actions = ['forward', 'back', 'left', 'right', 'jump', 'sneak'];
+    const action = actions[Math.floor(Math.random() * actions.length)];
+    
+    switch(action) {
+      case 'forward':
+        bot.setControlState('forward', true);
+        setTimeout(() => bot.setControlState('forward', false), 2000);
+        break;
+      case 'back':
+        bot.setControlState('back', true);
+        setTimeout(() => bot.setControlState('back', false), 2000);
+        break;
+      case 'left':
+        bot.setControlState('left', true);
+        setTimeout(() => bot.setControlState('left', false), 1500);
+        break;
+      case 'right':
+        bot.setControlState('right', true);
+        setTimeout(() => bot.setControlState('right', false), 1500);
+        break;
+      case 'jump':
+        bot.setControlState('jump', true);
+        setTimeout(() => bot.setControlState('jump', false), 500);
+        break;
+      case 'sneak':
+        bot.setControlState('sneak', true);
+        setTimeout(() => bot.setControlState('sneak', false), 2000);
+        break;
+    }
+  }, 5000);
+}
+
+// COMMANDS (Chat based)
 bot.on('chat', async (username, message) => {
   if (username === bot.username) return;
   
+  // HELP
   if (message === '!help') {
-    bot.chat('&8[&bRORKE&8] &fCommands: &b!ping &f| &b!info &f| &b!model &f| &b!models &f| &b!ai <question>');
+    bot.chat('Commands: !ping, !model, !models, !ai <question>, !come, !follow, !stop, !sneak, !stand, !run');
     return;
   }
   
+  // PING
   if (message === '!ping') {
-    bot.chat(`&8[&bRORKE&8] &fPong! Latency: &b${bot.player.ping}ms`);
+    bot.chat(`Pong! ${bot.player.ping}ms`);
     return;
   }
   
-  if (message === '!info') {
-    bot.chat(`&8[&bRORKE&8] &fModel: &b${ai.getModelName()} &f| Server: &bCloudSMP`);
-    return;
-  }
-  
+  // MODELS
   if (message === '!models') {
-    bot.chat(`&8[&bRORKE&8] &fAvailable: &b${ai.listModels()}`);
+    bot.chat(`Models: ${ai.listModels()}`);
     return;
   }
   
+  // SWITCH MODEL
   if (message.startsWith('!model ')) {
     const modelName = message.replace('!model ', '').toLowerCase();
-    const result = ai.switchModel(modelName);
-    bot.chat(`&8[&bRORKE&8] &f${result}`);
+    bot.chat(ai.switchModel(modelName));
     return;
   }
   
+  // AI CHAT
   if (message.startsWith('!ai ')) {
     const question = message.replace('!ai ', '');
-    bot.chat('&8[&bRORKE&8] &fThinking...');
-    try {
-      const answer = await ai.ask(question);
-      bot.chat(`&8[&bRORKE&8] &f${answer}`);
-    } catch (error) {
-      bot.chat('&8[&bRORKE&8] &f❌ AI error!');
+    bot.chat('Thinking...');
+    const answer = await ai.ask(question);
+    bot.chat(answer);
+    return;
+  }
+  
+  // COME TO PLAYER
+  if (message === '!come') {
+    const player = bot.players[username]?.entity;
+    if (player) {
+      bot.pathfinder.setGoal(null);
+      bot.lookAt(player.position);
+      bot.setControlState('forward', true);
+      setTimeout(() => bot.setControlState('forward', false), 3000);
+      bot.chat('Coming to you!');
     }
     return;
   }
   
+  // FOLLOW PLAYER
+  if (message === '!follow') {
+    const player = bot.players[username]?.entity;
+    if (player) {
+      bot.pathfinder.setGoal(new mineflayer.goals.GoalFollow(player, 2), true);
+      bot.chat('Following you!');
+    }
+    return;
+  }
+  
+  // STOP MOVEMENT
+  if (message === '!stop') {
+    bot.pathfinder.setGoal(null);
+    bot.clearControlStates();
+    bot.chat('Stopped!');
+    return;
+  }
+  
+  // SNEAK
+  if (message === '!sneak') {
+    bot.setControlState('sneak', true);
+    bot.chat('Sneaking!');
+    return;
+  }
+  
+  // STAND
+  if (message === '!stand') {
+    bot.setControlState('sneak', false);
+    bot.chat('Standing!');
+    return;
+  }
+  
+  // RUN
+  if (message === '!run') {
+    bot.setControlState('sprint', true);
+    bot.setControlState('forward', true);
+    setTimeout(() => {
+      bot.setControlState('sprint', false);
+      bot.setControlState('forward', false);
+    }, 3000);
+    bot.chat('Running!');
+    return;
+  }
+  
+  // GIVE ITEM TO BOT
+  if (message.startsWith('!give ')) {
+    bot.chat('Give me item by dropping near me!');
+    return;
+  }
+  
+  // AUTO AI RESPONSE (when name called)
   if (message.includes('Rorke') || message.includes('rorke') || message.includes('RORKE')) {
     const question = message.replace(/Rorke|rorke|RORKE/gi, '').trim();
-    bot.chat('&8[&bRORKE&8] &fThinking...');
-    try {
-      const answer = await ai.ask(question || 'Hello!');
-      bot.chat(`&8[&bRORKE&8] &f${answer}`);
-    } catch (error) {
-      bot.chat('&8[&bRORKE&8] &f❌ AI error!');
-    }
+    const answer = await ai.ask(question || 'Hello');
+    bot.chat(answer);
+    return;
   }
 });
 
+// ITEM PICKUP (Auto collect nearby items)
+bot.on('entitySpawn', (entity) => {
+  if (entity.kind === 'Drops') {
+    const item = entity.metadata[entity.metadata.length - 1];
+    bot.collectBlock.collect(entity, (err) => {
+      if (err) console.log('Collect error:', err);
+    });
+  }
+});
+
+// PLAYER JOIN (Simple)
 bot.on('playerJoin', (player) => {
-  bot.chat(`&8[&bRORKE&8] &fWelcome &b${player.username} &fto CloudSMP!`);
+  console.log(`${player.username} joined`);
 });
 
+// PLAYER LEAVE (Simple)
 bot.on('playerLeave', (player) => {
-  bot.chat(`&8[&bRORKE&8] &fGoodbye &b${player.username}&f!`);
+  console.log(`${player.username} left`);
 });
 
-bot.on('kicked', (reason) => {
-  console.log('Kicked:', reason);
-});
-
-bot.on('error', (err) => {
-  console.log('Error:', err);
-});
-
-bot.on('end', () => {
-  console.log('Bot disconnected!');
-  setTimeout(() => process.exit(1), 5000);
-});
+bot.on('kicked', (reason) => console.log('Kicked:', reason));
+bot.on('error', (err) => console.log('Error:', err));
+bot.on('end', () => setTimeout(() => process.exit(1), 5000));
