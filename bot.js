@@ -7,13 +7,13 @@ const app = express();
 app.get('/', (req, res) => res.send('Rorke Bot Online!'));
 app.listen(3000);
 
-// GEMINI API - NAYA FORMAT KEY
+// GEMINI API - NAYA KEY YAHAN
 const GEMINI_API_KEY = 'AQ.Ab8RN6Ks36d53xLFNMzUcre1_JauWeh43jFcWUId6yrehz7KRg';
 
 class GeminiAI {
   constructor() {
     this.apiKey = GEMINI_API_KEY;
-    this.model = 'gemini-2.0-flash';
+    this.model = 'gemini-2.5-flash'; // UPDATE: Naya model
     this.baseUrl = 'https://generativelanguage.googleapis.com/v1beta';
   }
   
@@ -34,8 +34,9 @@ class GeminiAI {
       const answer = response.data.candidates?.[0]?.content?.parts?.[0]?.text || 'No response';
       return answer.replace(/[^a-zA-Z0-9\s.,!?']/g, '').trim();
     } catch (error) {
-      console.error('Error:', error.response?.data?.error?.message || error.message);
-      return 'AI error: ' + (error.response?.data?.error?.message || 'unknown').substring(0, 50);
+      const errMsg = error.response?.data?.error?.message || error.message;
+      console.error('Error:', errMsg);
+      return 'AI error: ' + errMsg.substring(0, 50);
     }
   }
 }
