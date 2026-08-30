@@ -98,31 +98,63 @@ const bot = mineflayer.createBot({
   version: '1.20.4'
 });
 
-// AUTO LOGIN - Console mein command bhejo
+// AUTO REGISTER + LOGIN
 bot.on('login', () => {
-  console.log('Rorke joined! Attempting auto-login...');
+  console.log('Rorke joined! Starting authentication...');
   
-  // 2 second wait karke login command bhejo
   setTimeout(() => {
-    bot.chat('/login rorke4321a@');
-    console.log('Login command sent!');
+    console.log('Trying to register...');
+    bot.chat('/register rorke4321 rorke4321');
   }, 2000);
 });
 
-// Login successful check
 bot.on('message', (message) => {
-  const msg = message.toString();
+  const msg = message.toString().toLowerCase();
   
-  // Agar login successful message aaye
-  if (msg.includes('successfully logged in') || msg.includes('Login successful')) {
+  // Register successful
+  if (msg.includes('registered') || msg.includes('successfully registered') || msg.includes('registration successful')) {
+    console.log('✅ Registered! Now logging in...');
+    setTimeout(() => {
+      bot.chat('/login rorke4321');
+    }, 2000);
+  }
+  
+  // Already registered
+  if (msg.includes('already registered')) {
+    console.log('⚠️ Already registered! Logging in...');
+    setTimeout(() => {
+      bot.chat('/login rorke4321');
+    }, 2000);
+  }
+  
+  // Login successful
+  if (msg.includes('successfully logged in') || msg.includes('login successful') || msg.includes('logged in')) {
     console.log('✅ Login successful!');
     bot.chat('§8[§bRORKE§8] §fOnline! Type §b!help §ffor commands!');
   }
   
-  // Agar login required message aaye
-  if (msg.includes('/login') || msg.includes('login required')) {
-    bot.chat('/login rorke4321a@');
-    console.log('⚠️ Login required - sending password...');
+  // Register required
+  if (msg.includes('register required') || msg.includes('please register') || msg.includes('/register')) {
+    console.log('⚠️ Register required...');
+    setTimeout(() => {
+      bot.chat('/register rorke4321 rorke4321');
+    }, 2000);
+  }
+  
+  // Login required
+  if (msg.includes('login required') || msg.includes('please login') || msg.includes('/login')) {
+    console.log('⚠️ Login required...');
+    setTimeout(() => {
+      bot.chat('/login rorke4321');
+    }, 2000);
+  }
+  
+  // Wrong password
+  if (msg.includes('wrong password') || msg.includes('incorrect password')) {
+    console.log('❌ Wrong password! Trying again...');
+    setTimeout(() => {
+      bot.chat('/login rorke4321');
+    }, 3000);
   }
 });
 
