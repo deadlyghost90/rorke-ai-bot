@@ -18,7 +18,7 @@ class OpenRouterAI {
   }
   
   async ask(question) {
-    if (!this.apiKey) return 'No API key';
+    if (!this.apiKey) return 'API key missing';
     
     try {
       const response = await axios.post(
@@ -26,7 +26,10 @@ class OpenRouterAI {
         {
           model: this.model,
           messages: [
-            { role: 'system', content: 'You are Rorke, a Minecraft bot on CloudSMP. Reply in Roman Urdu (like: haan, theek hai, aa raha hoon). Be friendly, cute with Ayra, respect DeadlyGhost. Answer in 1 short sentence.' },
+            { 
+              role: 'system', 
+              content: 'You are Rorke, a Minecraft bot on CloudSMP. Reply in Roman Urdu. Be friendly, respectful to DeadlyGhost (owner), cute with Ayra_Slayz (girlfriend). Answer in 1 short sentence only.' 
+            },
             { role: 'user', content: question }
           ],
           max_tokens: 60,
@@ -41,60 +44,170 @@ class OpenRouterAI {
         }
       );
       
-      return response.data.choices?.[0]?.message?.content?.trim() || 'Haan bolo!';
+      const answer = response.data.choices?.[0]?.message?.content?.trim();
+      return answer ? answer.substring(0, 100) : 'Haan bolo!';
     } catch (error) {
-      console.error('AI Error:', error.response?.data?.error?.message || error.message);
-      return 'Hmm, samajh nahi aaya, phir bolo!';
+      console.error('AI Error:', error.message);
+      return 'Samajh nahi aaya, phir bolo!';
     }
   }
 }
 
 const ai = new OpenRouterAI();
 
+// Bot setup with proper settings
 const bot = mineflayer.createBot({
   host: process.env.SERVER_IP || 'YOUR_SERVER_IP',
   port: parseInt(process.env.SERVER_PORT) || 21148,
   username: 'Rorke',
-  version: '1.20.4'
+  version: '1.20.4',
+  auth: 'offline',
+  hideErrors: false
 });
 
 // AUTH
 bot.on('login', () => {
-  console.log('Rorke joined!');
-  setTimeout(() => bot.chat('/register rorke4321 rorke4321'), 2000);
+  console.log('✅ Rorke joined!');
+  setTimeout(() => {
+    bot.chat('/register rorke4321 rorke4321');
+    console.log('📝 Register sent');
+  }, 2000);
 });
 
 bot.on('message', (message) => {
-  const msg = message.toString().toLowerCase();
+  const msg = message.toString();
+  const lower = msg.toLowerCase();
   
-  if (msg.includes('registered') || msg.includes('successfully registered') || msg.includes('already registered')) {
+  // Auth messages
+  if (lower.includes('registered') || lower.includes('already registered')) {
+    console.log('📝 Register done, logging in...');
     setTimeout(() => bot.chat('/login rorke4321'), 2000);
   }
   
-  if (msg.includes('successfully logged in') || msg.includes('login successful')) {
-    console.log('Login successful!');
-    bot.chat('Rorke online! Mujhe bulao Rorke bol ke!');
+  if (lower.includes('successfully logged') || lower.includes('login successful')) {
+    console.log('✅ LOGIN SUCCESS!');
+    bot.chat('Rorke online! Mujhe Rorke bol ke bulao!');
     startBotLife();
   }
   
-  if (msg.includes('register required') || msg.includes('please register')) {
+  if (lower.includes('register required') || lower.includes('please register')) {
     setTimeout(() => bot.chat('/register rorke4321 rorke4321'), 2000);
   }
   
-  if (msg.includes('login required') || msg.includes('please login')) {
+  if (lower.includes('login required') || lower.includes('please login')) {
     setTimeout(() => bot.chat('/login rorke4321'), 2000);
   }
   
-  if (msg.includes('wrong password')) {
+  if (lower.includes('wrong password')) {
     setTimeout(() => bot.chat('/login rorke4321'), 3000);
+  }
+  
+  // CHAT DETECTION (from message)
+  const chatMatch = msg.match(/(?:<|\[)?(\w+)(?:\]|>)?(?: »|:|: )(.+)/);
+  if (chatMatch && !lower.includes('rorke joined') && !lower.includes('logged in')) {
+    const username = chatMatch[1].trim();
+    const chatMessage = chatMatch[2].trim();
+    
+    if (username === bot.username) return;
+    
+    console.log(`💬 CHAT: ${username}: ${chatMessage}`);
+    handleChat(username, chatMessage);
   }
 });
 
+// CHAT HANDLER FUNCTION
+async function handleChat(username, message) {
+  const msg = message.toLowerCase();
+  
+  // DEADLYGHOST COMMANDS
+  if (username === 'DeadlyGhost') {
+    if (msg.includes('aao') || msg.includes('come') || msg.includes('idhar')) {
+      const p = bot.players['DeadlyGhost']?.entity;
+      if (p) {
+        bot.lookAt(p.position.offset(0, 1.6, 0));
+        bot.setControlState('sprint', true);
+        bot.setControlState('forward', true);
+        setTimeout(() => {
+          bot.setControlState('sprint', false);
+          bot.setControlState('forward', false);
+        }, 5000);
+        bot.chat('Aa raha hoon boss!');
+      }
+      return;
+    }
+    
+    if (msg.includes('ruk') || msg.includes('stop')) {
+      bot.clearControlStates();
+      bot.chat('Ruk gaya boss!');
+      return;
+    }
+    
+    if (msg.includes('jump') || msg.includes('kudo')) {
+      bot.setControlState('jump', true);
+      setTimeout(() => bot.setControlState('jump', false), 500);
+      bot.chat('Jump kiya!');
+      return;
+    }
+  }
+  
+  // AYRA_SLAYZ
+  if (username === 'Ayra_Slayz') {
+    if (msg.includes('hello') || msg.includes('hi') || msg.includes('hey')) {
+      bot.chat('Hii Ayra! Tum aayi!');
+      return;
+    }
+    if (msg.includes('love') || msg.includes('pyaar') || msg.includes('cute')) {
+      bot.chat('Ayra, tum sabse cute ho!');
+      return;
+    }
+    if (msg.includes('help') || msg.includes('madad') || msg.includes('bachao')) {
+      bot.chat('Ayra! Main aa raha hoon!');
+      const p = bot.players['Ayra_Slayz']?.entity;
+      if (p) {
+        bot.lookAt(p.position.offset(0, 1.6, 0));
+        bot.setControlState('sprint', true);
+        bot.setControlState('forward', true);
+        setTimeout(() => {
+          bot.setControlState('sprint', false);
+          bot.setControlState('forward', false);
+        }, 5000);
+      }
+      return;
+    }
+  }
+  
+  // RORKE DETECTION
+  if (msg.includes('rorke') || msg.includes('rork') || msg.includes('bot')) {
+    console.log('🎯 RORKE CALLED!');
+    bot.chat('Haan bolo!');
+    
+    const question = msg.replace(/rorke|rork|bot/gi, '').trim();
+    setTimeout(async () => {
+      const answer = await ai.ask(question || 'Hello');
+      bot.chat(answer);
+    }, 1000);
+    return;
+  }
+  
+  // SIMPLE COMMANDS
+  if (msg === 'ping' || msg === '!ping') {
+    bot.chat(`Pong! ${bot.player.ping}ms`);
+    return;
+  }
+  
+  if (msg === 'help' || msg === '!help') {
+    bot.chat('Commands: ping, Rorke question, aao, ruk, jump');
+    return;
+  }
+}
+
 // BOT LIFE
 function startBotLife() {
-  console.log('Rorke is ALIVE!');
+  console.log('🎮 Rorke is ALIVE!');
   
   setInterval(() => {
+    if (!bot.entity) return;
+    
     const actions = ['forward', 'back', 'jump', 'sneak', 'left', 'right'];
     const action = actions[Math.floor(Math.random() * actions.length)];
     
@@ -126,8 +239,10 @@ function startBotLife() {
     }
   }, 4000);
   
-  // Look at players
+  // Look at special players
   setInterval(() => {
+    if (!bot.entity) return;
+    
     const special = ['DeadlyGhost', 'Ayra_Slayz', 'tuff_hedgehog'];
     for (const name of special) {
       const player = bot.players[name]?.entity;
@@ -146,100 +261,16 @@ bot.on('entitySpawn', (entity) => {
   }
 });
 
-// ============ CHAT HANDLER ============
-bot.on('chat', async (username, message) => {
-  console.log('CHAT:', username, ':', message);
-  
-  if (username === bot.username) return;
-  
-  const msg = message.toLowerCase();
-  
-  // ========== DEADLYGHOST ==========
-  if (username === 'DeadlyGhost') {
-    if (msg.includes('aao') || msg.includes('come') || msg.includes('idhar')) {
-      const p = bot.players['DeadlyGhost']?.entity;
-      if (p) {
-        bot.lookAt(p.position.offset(0, 1.6, 0));
-        bot.setControlState('sprint', true);
-        bot.setControlState('forward', true);
-        setTimeout(() => {
-          bot.setControlState('sprint', false);
-          bot.setControlState('forward', false);
-        }, 5000);
-        bot.chat('Aa raha hoon boss!');
-      }
-      return;
-    }
-    
-    if (msg.includes('ruk') || msg.includes('stop')) {
-      bot.clearControlStates();
-      bot.chat('Ruk gaya boss!');
-      return;
-    }
-    
-    if (msg.includes('jump') || msg.includes('kudo')) {
-      bot.setControlState('jump', true);
-      setTimeout(() => bot.setControlState('jump', false), 500);
-      bot.chat('Jump kiya!');
-      return;
-    }
-  }
-  
-  // ========== AYRA_SLAYZ ==========
-  if (username === 'Ayra_Slayz') {
-    if (msg.includes('hello') || msg.includes('hi') || msg.includes('hey') || msg.includes('salam')) {
-      bot.chat('Hii Ayra! Tum aayi!');
-      return;
-    }
-    
-    if (msg.includes('love') || msg.includes('pyaar') || msg.includes('cute')) {
-      bot.chat('Ayra, tum sabse cute ho!');
-      return;
-    }
-    
-    if (msg.includes('help') || msg.includes('madad') || msg.includes('bachao')) {
-      bot.chat('Ayra! Main aa raha hoon!');
-      const p = bot.players['Ayra_Slayz']?.entity;
-      if (p) {
-        bot.lookAt(p.position.offset(0, 1.6, 0));
-        bot.setControlState('sprint', true);
-        bot.setControlState('forward', true);
-        setTimeout(() => {
-          bot.setControlState('sprint', false);
-          bot.setControlState('forward', false);
-        }, 5000);
-      }
-      return;
-    }
-  }
-  
-  // ========== RORKE DETECTION (Pakka Reply) ==========
-  if (msg.includes('rorke') || msg.includes('rork') || msg.includes('bot')) {
-    console.log('RORKE DETECTED! Replying...');
-    
-    const question = msg.replace(/rorke|rork|bot/gi, '').trim();
-    
-    bot.chat('Haan bolo!');
-    
-    setTimeout(async () => {
-      const answer = await ai.ask(question || 'Hello');
-      bot.chat(answer);
-    }, 1000);
-    return;
-  }
-  
-  // ========== SIMPLE COMMANDS ==========
-  if (msg === 'help' || msg === '!help') {
-    bot.chat('Commands: ping, ai question, aao, ruk, jump');
-    return;
-  }
-  
-  if (msg === 'ping' || msg === '!ping') {
-    bot.chat(`Pong! ${bot.player.ping}ms`);
-    return;
-  }
+// ERROR HANDLING
+bot.on('kicked', (reason) => {
+  console.log('❌ Kicked:', reason);
 });
 
-bot.on('kicked', (reason) => console.log('Kicked:', reason));
-bot.on('error', (err) => console.log('Error:', err));
-bot.on('end', () => setTimeout(() => process.exit(1), 5000));
+bot.on('error', (err) => {
+  console.log('❌ Error:', err.message);
+});
+
+bot.on('end', () => {
+  console.log('❌ Disconnected!');
+  setTimeout(() => process.exit(1), 5000);
+});
