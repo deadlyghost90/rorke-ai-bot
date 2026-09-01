@@ -7,18 +7,18 @@ const app = express();
 app.get('/', (req, res) => res.send('Rorke Bot Online!'));
 app.listen(3000);
 
-// OPENROUTER API
+// OPENROUTER API (same key)
 const OPENROUTER_API_KEY = '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';
 
 class OpenRouterAI {
   constructor() {
     this.apiKey = OPENROUTER_API_KEY;
-    this.model = 'meta-llama/llama-3.3-70b-instruct:free';
+    this.model = 'mistralai/mistral-7b-instruct:free'; // Fast + free
     this.baseUrl = 'https://openrouter.ai/api/v1/chat/completions';
   }
   
   async ask(question) {
-    if (!this.apiKey || this.apiKey.includes('YOUR_OPENROUTER')) return 'No API key';
+    if (!this.apiKey) return 'No API key';
     
     try {
       const response = await axios.post(
@@ -26,11 +26,11 @@ class OpenRouterAI {
         {
           model: this.model,
           messages: [
-            { role: 'system', content: 'You are Rorke, a Minecraft bot. Answer briefly.' },
+            { role: 'system', content: 'You are Rorke, a Minecraft bot on CloudSMP. You are friendly, cute with Ayra_Slayz, protective, and helpful. Answer in 1-2 sentences.' },
             { role: 'user', content: question }
           ],
-          max_tokens: 80,
-          temperature: 0.7
+          max_tokens: 100,
+          temperature: 0.8
         },
         {
           headers: {
@@ -41,11 +41,10 @@ class OpenRouterAI {
         }
       );
       
-      const answer = response.data.choices?.[0]?.message?.content || 'No response';
-      return answer.replace(/[^a-zA-Z0-9\s.,!?']/g, '').trim();
+      return response.data.choices?.[0]?.message?.content?.trim() || 'No response';
     } catch (error) {
-      console.error('Error:', error.response?.data?.error?.message || error.message);
-      return 'AI error';
+      console.error('AI Error:', error.response?.data?.error?.message || error.message);
+      return 'Hmm, soch raha hoon...';
     }
   }
 }
@@ -90,35 +89,31 @@ bot.on('message', (message) => {
   }
 });
 
-// BOT LIFE - Player-like movement + DeadlyGhost focus
+// BOT LIFE
 function startBotLife() {
   console.log('Rorke is ALIVE!');
+  bot.chat('Rorke is online! Type help for commands!');
   
-  // Player-like random movement with facing direction
   setInterval(() => {
-    const actions = ['forward', 'back', 'strafe_left', 'strafe_right', 'jump', 'sneak', 'sprint', 'look_around'];
+    const actions = ['forward', 'back', 'left', 'right', 'jump', 'sneak', 'look'];
     const action = actions[Math.floor(Math.random() * actions.length)];
     
     switch(action) {
       case 'forward':
-        bot.look(bot.entity.yaw, 0);
         bot.setControlState('forward', true);
-        setTimeout(() => bot.setControlState('forward', false), 3000);
+        setTimeout(() => bot.setControlState('forward', false), 2500);
         break;
       case 'back':
-        bot.look(bot.entity.yaw + Math.PI, 0);
         bot.setControlState('back', true);
         setTimeout(() => bot.setControlState('back', false), 2000);
         break;
-      case 'strafe_left':
-        bot.look(bot.entity.yaw - Math.PI/2, 0);
+      case 'left':
         bot.setControlState('left', true);
-        setTimeout(() => bot.setControlState('left', false), 2000);
+        setTimeout(() => bot.setControlState('left', false), 1500);
         break;
-      case 'strafe_right':
-        bot.look(bot.entity.yaw + Math.PI/2, 0);
+      case 'right':
         bot.setControlState('right', true);
-        setTimeout(() => bot.setControlState('right', false), 2000);
+        setTimeout(() => bot.setControlState('right', false), 1500);
         break;
       case 'jump':
         bot.setControlState('jump', true);
@@ -126,33 +121,22 @@ function startBotLife() {
         break;
       case 'sneak':
         bot.setControlState('sneak', true);
-        setTimeout(() => bot.setControlState('sneak', false), 3000);
+        setTimeout(() => bot.setControlState('sneak', false), 2000);
         break;
-      case 'sprint':
-        bot.setControlState('sprint', true);
-        bot.setControlState('forward', true);
-        setTimeout(() => {
-          bot.setControlState('sprint', false);
-          bot.setControlState('forward', false);
-        }, 3000);
-        break;
-      case 'look_around':
-        bot.look(bot.entity.yaw + Math.random() * Math.PI * 2, (Math.random() - 0.5) * Math.PI / 2);
+      case 'look':
+        bot.look(bot.entity.yaw + Math.random() * Math.PI, (Math.random() - 0.5));
         break;
     }
-  }, 3000);
+  }, 4000);
   
-  // Look at DeadlyGhost
+  // Look at important players
   setInterval(() => {
-    const deadlyGhost = bot.players['DeadlyGhost']?.entity;
-    if (deadlyGhost && deadlyGhost !== bot.entity) {
-      bot.lookAt(deadlyGhost.position.offset(0, 1.6, 0));
-    } else {
-      // Look at nearest player
-      const players = Object.values(bot.players).map(p => p.entity).filter(e => e && e !== bot.entity);
-      if (players.length > 0) {
-        const nearest = players[0];
-        bot.lookAt(nearest.position.offset(0, 1.6, 0));
+    const special = ['DeadlyGhost', 'Ayra_Slayz', 'tuff_hedgehog'];
+    for (const name of special) {
+      const player = bot.players[name]?.entity;
+      if (player && player !== bot.entity) {
+        bot.lookAt(player.position.offset(0, 1.6, 0));
+        return;
       }
     }
   }, 1000);
@@ -165,53 +149,33 @@ bot.on('entitySpawn', (entity) => {
   }
 });
 
-// PLAYER CHAT - DeadlyGhost commands + AI
+// CHAT HANDLER
 bot.on('chat', async (username, message) => {
   if (username === bot.username) return;
   
   const msg = message.toLowerCase();
+  console.log(`CHAT: ${username}: ${message}`);
   
-  // DEADLYGHOST SPECIAL COMMANDS (Owner control)
+  // ========== DEADLYGHOST (Owner) ==========
   if (username === 'DeadlyGhost') {
-    const ghost = bot.players['DeadlyGhost']?.entity;
-    
     if (msg === 'aao' || msg === 'come' || msg === 'idhar aao') {
-      if (ghost) {
-        bot.lookAt(ghost.position.offset(0, 1.6, 0));
+      const p = bot.players['DeadlyGhost']?.entity;
+      if (p) {
+        bot.lookAt(p.position.offset(0, 1.6, 0));
         bot.setControlState('sprint', true);
         bot.setControlState('forward', true);
         setTimeout(() => {
           bot.setControlState('sprint', false);
           bot.setControlState('forward', false);
         }, 5000);
-        bot.chat('Aa raha hoon!');
+        bot.chat('Aa raha hoon boss!');
       }
       return;
     }
     
-    if (msg === 'ruk' || msg === 'stop' || msg === 'ruk jao') {
+    if (msg === 'ruk' || msg === 'stop') {
       bot.clearControlStates();
       bot.chat('Ruk gaya!');
-      return;
-    }
-    
-    if (msg === 'follow' || msg === 'peeche aao') {
-      if (ghost) {
-        const followInterval = setInterval(() => {
-          if (!bot.players['DeadlyGhost']) {
-            clearInterval(followInterval);
-            return;
-          }
-          const g = bot.players['DeadlyGhost'].entity;
-          if (bot.entity.position.distanceTo(g.position) > 3) {
-            bot.lookAt(g.position.offset(0, 1.6, 0));
-            bot.setControlState('forward', true);
-          } else {
-            bot.setControlState('forward', false);
-          }
-        }, 500);
-        bot.chat('Follow kar raha hoon!');
-      }
       return;
     }
     
@@ -221,45 +185,60 @@ bot.on('chat', async (username, message) => {
       bot.chat('Jump kiya!');
       return;
     }
-    
-    if (msg === 'sneak' || msg === 'jhuko') {
-      bot.setControlState('sneak', true);
-      bot.chat('Jhuk gaya!');
+  }
+  
+  // ========== AYRA_SLAYZ (Girlfriend - Cute Mode) ==========
+  if (username === 'Ayra_Slayz') {
+    if (msg.includes('hello') || msg.includes('hi') || msg.includes('hey')) {
+      bot.chat('Hii Ayra! Tum aayi! Tumse milke khushi hui!');
       return;
     }
     
-    if (msg === 'stand' || msg === 'khare ho jao') {
-      bot.setControlState('sneak', false);
-      bot.chat('Khara ho gaya!');
+    if (msg.includes('love') || msg.includes('pyaar') || msg.includes('cute')) {
+      bot.chat('Ayra, tum sabse cute ho! Main tumhe protect karunga hamesha!');
       return;
     }
     
-    if (msg === 'run' || msg === 'bhaag') {
-      bot.setControlState('sprint', true);
+    if (msg.includes('help') || msg.includes('madad') || msg.includes('bachao')) {
+      bot.chat('Ayra, main aa raha hoon! Tumhe koi touch nahi kar sakta!');
+      const p = bot.players['Ayra_Slayz']?.entity;
+      if (p) {
+        bot.lookAt(p.position.offset(0, 1.6, 0));
+        bot.setControlState('sprint', true);
+        bot.setControlState('forward', true);
+        setTimeout(() => {
+          bot.setControlState('sprint', false);
+          bot.setControlState('forward', false);
+        }, 5000);
+      }
+      return;
+    }
+    
+    // Ayra ko protect karo - uske paas raho
+    const p = bot.players['Ayra_Slayz']?.entity;
+    if (p && bot.entity.position.distanceTo(p.position) > 5) {
+      bot.lookAt(p.position.offset(0, 1.6, 0));
       bot.setControlState('forward', true);
-      setTimeout(() => {
-        bot.setControlState('sprint', false);
-        bot.setControlState('forward', false);
-      }, 5000);
-      bot.chat('Bhaag raha hoon!');
+      setTimeout(() => bot.setControlState('forward', false), 3000);
+      bot.chat('Ayra, tumhare paas aa raha hoon!');
       return;
     }
   }
   
-  // GENERAL COMMANDS
-  if (msg === '!help') {
-    bot.chat('Commands: !ping, !ai question, come, follow, stop, jump, sneak, stand, run');
+  // ========== GENERAL ==========
+  if (msg === 'help' || msg === '!help') {
+    bot.chat('Commands: ping, ai <question>, come, stop, jump');
     return;
   }
   
-  if (msg === '!ping') {
-    bot.chat(`Pong ${bot.player.ping}ms`);
+  if (msg === 'ping' || msg === '!ping') {
+    bot.chat(`Pong! ${bot.player.ping}ms`);
     return;
   }
   
-  // AI CHAT
-  if (msg.startsWith('!ai ') || msg.includes('rorke') || msg.includes('hello rorke')) {
-    const question = msg.replace(/!ai |rorke|hello/gi, '').trim();
+  // AI CHAT - Smart Response
+  if (msg.startsWith('ai ') || msg.startsWith('!ai ') || msg.includes('rorke')) {
+    const question = msg.replace(/!?ai |rorke/gi, '').trim();
     const answer = await ai.ask(question || 'Hello');
     bot.chat(answer);
     return;
